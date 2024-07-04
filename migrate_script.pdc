@@ -1,0 +1,475 @@
+﻿set feedback off
+set autoprint off
+set serveroutput on size unlimited
+set concat off
+set echo off
+set serveroutput on size '1000000'
+whenever sqlerror exit
+
+prompt ============================================================================================
+prompt   Скрипт миграции
+prompt ============================================================================================
+
+prompt ============================================================================================
+prompt   Модификация, добавление данных
+prompt ============================================================================================
+
+prompt Создание таблицы CLIENT...
+declare
+  cnt number;
+begin
+  select count(*) into cnt from all_tables where table_name = 'CLIENT' and owner = 'SYSTEM';
+  if cnt = 0 then
+    execute immediate 'create table SYSTEM.CLIENT (
+                           ID number not null,
+                   FIRST_NAME varchar(50) not null,
+                    LAST_NAME varchar(50) not null)';
+    execute immediate 'comment on table SYSTEM.CLIENT is ''Клиенты''';
+    execute immediate 'comment on column SYSTEM.CLIENT.ID is ''ИД клиента''';
+    execute immediate 'comment on column SYSTEM.CLIENT.FIRST_NAME is ''Имя''';
+    execute immediate 'comment on column SYSTEM.CLIENT.LAST_NAME is ''Фамилия''';
+
+    commit;
+    dbms_output.put_line('... таблица CLIENT создана');
+  else
+    dbms_output.put_line('... таблица CLIENT уже существует');
+  end if;
+end;
+/
+prompt Создание таблицы CLIENT... ok
+
+prompt Создание таблицы PAYMENTS...
+declare
+  cnt number;
+begin
+  select count(*) into cnt from all_tables where table_name = 'PAYMENT' and owner = 'SYSTEM';
+  if cnt = 0 then
+    execute immediate 'create table SYSTEM.PAYMENT (
+                           ID number not null,
+                    ID_CLIENT number not null,
+                 PAYMENT_TYPE varchar2(1) not null,
+                  PAYMENT_SUM number not null,
+                 PAYMENT_DATE date not null)';
+    execute immediate 'comment on table SYSTEM.PAYMENT is ''Платежи''';
+    execute immediate 'comment on column SYSTEM.PAYMENT.ID is ''ИД платежа''';
+    execute immediate 'comment on column SYSTEM.PAYMENT.ID_CLIENT is ''ИД клиента''';
+    execute immediate 'comment on column SYSTEM.PAYMENT.PAYMENT_TYPE is ''Тип платежа (1 - пополнение через терминал, 2 - пополнение через карту, 3 - бонус от оператора)''';
+    execute immediate 'comment on column SYSTEM.PAYMENT.PAYMENT_SUM is ''Сумма платежа''';
+    execute immediate 'comment on column SYSTEM.PAYMENT.PAYMENT_DATE is ''Дата платежа''';
+
+    commit;
+    dbms_output.put_line('... таблица PAYMENT создана');
+  else
+    dbms_output.put_line('... таблица PAYMENT уже существует');
+  end if;
+end;
+/
+prompt Создание таблицы PAYMENTS... ok
+
+prompt Создание таблицы EXPENSE...
+declare
+  cnt number;
+begin
+  select count(*) into cnt from all_tables where table_name = 'EXPENSE' and owner = 'SYSTEM';
+  if cnt = 0 then
+    execute immediate 'create table SYSTEM.EXPENSE (
+                           ID number not null,
+                    ID_CLIENT number not null,
+                 EXPENSE_TYPE varchar2(1) not null,
+                  EXPENSE_SUM number not null,
+                 EXPENSE_DATE date not null)';
+
+    execute immediate 'comment on table SYSTEM.EXPENSE is ''Расходы''';
+    execute immediate 'comment on column SYSTEM.EXPENSE.ID is ''ИД расхода''';
+    execute immediate 'comment on column SYSTEM.EXPENSE.ID_CLIENT is ''ИД клиента''';
+    execute immediate 'comment on column SYSTEM.EXPENSE.EXPENSE_TYPE is ''Тип расхода (1 - звонок, 2 - смс, 3 - интернет)''';
+    execute immediate 'comment on column SYSTEM.EXPENSE.EXPENSE_SUM is ''Сумма расхода''';
+    execute immediate 'comment on column SYSTEM.EXPENSE.EXPENSE_DATE is ''Дата расхода''';
+
+    commit;
+    dbms_output.put_line('... таблица EXPENSE создана');
+  else
+    dbms_output.put_line('... таблица EXPENSE уже существует');
+  end if;
+end;
+/
+prompt Создание таблицы EXPENSE... ok
+
+prompt Создание таблицы BALANCE...
+declare
+  cnt number;
+begin
+  select count(*) into cnt from all_tables where table_name = 'BALANCE' and owner = 'SYSTEM';
+  if cnt = 0 then
+    execute immediate 'create table SYSTEM.BALANCE (
+                           ID number not null,
+                    ID_CLIENT number not null,
+                  BALANCE_SUM number not null,
+                  UPDATE_DATE date not null)';
+
+    execute immediate 'comment on table SYSTEM.BALANCE is ''Баланс''';
+    execute immediate 'comment on column SYSTEM.BALANCE.ID is ''ИД баланса''';
+    execute immediate 'comment on column SYSTEM.BALANCE.ID_CLIENT is ''ИД клиента''';
+    execute immediate 'comment on column SYSTEM.BALANCE.BALANCE_SUM is ''Сумма баланса''';
+    execute immediate 'comment on column SYSTEM.BALANCE.UPDATE_DATE is ''Дата обновления баланса''';
+    commit;
+    dbms_output.put_line('... таблица BALANCE создана');
+  else
+    dbms_output.put_line('... таблица BALANCE уже существует');
+  end if;
+end;
+/
+prompt Создание таблицы BALANCE... ok
+
+prompt Создание таблицы BALANCE_LOG...
+declare
+  cnt number;
+begin
+  select count(*) into cnt from all_tables where table_name = 'BALANCE_LOG' and owner = 'SYSTEM';
+  if cnt = 0 then
+    execute immediate 'create table SYSTEM.BALANCE_LOG (
+                           ID number not null,
+                   ID_BALANCE number not null,
+                      ID_OPER number not null,
+                    TYPE_OPER varchar2(1) not null)';
+
+    execute immediate 'comment on table SYSTEM.BALANCE_LOG is ''Лог операций''';
+    execute immediate 'comment on column SYSTEM.BALANCE_LOG.ID is ''ИД лога''';
+    execute immediate 'comment on column SYSTEM.BALANCE_LOG.ID_BALANCE is ''ИД баланса''';
+    execute immediate 'comment on column SYSTEM.BALANCE_LOG.ID_OPER is ''ИД операции''';
+    execute immediate 'comment on column SYSTEM.BALANCE_LOG.TYPE_OPER is ''Тип операции: 1 - платеж, 2 - расход''';
+    commit;
+    dbms_output.put_line('... таблица BALANCE_LOG создана');
+  else
+    dbms_output.put_line('... таблица BALANCE_LOG уже существует');
+  end if;
+end;
+/
+prompt Создание таблицы BALANCE_LOG... ok
+
+prompt Добавление первичного и внешнего ключей на таблицы SYSTEM.CLIENT, SYSTEM.PAYMENTS, SYSTEM.EXPENSES, SYSTEM.BALANCE, SYSTEM.BALANCE_LOG...
+declare
+  cnt number;
+begin
+ select count(*) into cnt from all_constraints
+  where owner = 'SYSTEM'
+    and table_name = 'CLIENT'
+    and constraint_name= 'CLIENT_PK_ID';
+
+ if cnt = 0 then
+   execute immediate
+     'alter table CLIENT
+      add constraint CLIENT_PK_ID primary key (ID)';
+ end if;
+
+ if cnt > 0 then
+   cnt := 0;
+ end if;
+
+ select count(*) into cnt from all_constraints
+  where owner = 'SYSTEM'
+    and table_name = 'PAYMENT'
+    and constraint_name= 'PAYMENT_PK_ID';
+ if cnt = 0 then
+   execute immediate
+     'alter table PAYMENT
+      add constraint PAYMENT_PK_ID primary key (ID)';
+   execute immediate
+     'alter table PAYMENT
+      add constraint PAYMENT_FK_ID_CLIENT foreign key (ID_CLIENT)
+      references CLIENT (id)';
+ end if;
+
+ if cnt > 0 then
+   cnt := 0;
+ end if;
+
+ select count(*) into cnt from all_constraints
+  where owner = 'SYSTEM'
+    and table_name = 'EXPENSE'
+    and constraint_name= 'EXPENSE_PK_ID';
+ if cnt = 0 then
+   execute immediate
+     'alter table EXPENSE
+      add constraint EXPENSE_PK_ID primary key (ID)';
+   execute immediate
+     'alter table EXPENSE
+      add constraint EXPENSE_FK_ID_CLIENT foreign key (ID_CLIENT)
+      references CLIENT (id)';
+ end if;
+
+ select count(*) into cnt from all_constraints
+  where owner = 'SYSTEM'
+    and table_name = 'BALANCE'
+    and constraint_name= 'BALANCE_PK_ID';
+ if cnt = 0 then
+   execute immediate
+     'alter table BALANCE
+      add constraint BALANCE_PK_ID primary key (ID)';
+   execute immediate
+     'alter table BALANCE
+      add constraint BALANCE_FK_ID_CLIENT foreign key (ID_CLIENT)
+      references CLIENT (id)';
+ end if;
+
+ select count(*) into cnt from all_constraints
+  where owner = 'SYSTEM'
+    and table_name = 'BALANCE_LOG'
+    and constraint_name= 'BALANCE_LOG_PK_ID';
+ if cnt = 0 then
+   execute immediate
+     'alter table BALANCE_LOG
+      add constraint BALANCE_LOG_PK_ID primary key (ID)';
+   execute immediate
+     'alter table BALANCE_LOG
+      add constraint BALANCE_LOG_FK_ID_BALANCE foreign key (ID_BALANCE)
+      references BALANCE (id)';
+ end if;
+
+end;
+/
+prompt Добавление первичного и внешнего ключей на таблицы SYSTEM.CLIENT, SYSTEM.PAYMENTS, SYSTEM.EXPENSES, SYSTEM.BALANCE, SYSTEM.BALANCE_LOG... ok
+
+prompt Добавление сиквенса SYSTEM.SEQ_ID...
+declare
+  cnt number;
+begin
+ select count(*) into cnt from all_sequences
+  where sequence_owner = 'SYSTEM'
+    and sequence_name = 'SEQ_ID';
+ if cnt = 0 then
+   execute immediate
+     'create sequence SEQ_ID
+      minvalue 1 
+      maxvalue 9999999
+      start with 1
+      increment by 1
+      cache 100
+      order';
+ end if;
+end;
+/
+prompt Добавление сиквенса SYSTEM.SEQ_ID... ok
+
+prompt Добавление индексов на таблицы SYSTEM.BALANCE...
+declare
+  cnt number;
+begin
+ select count(*) into cnt from all_indexes
+  where owner = 'SYSTEM'
+    and table_name = 'BALANCE'
+    and index_name = 'IDX_BALANCE_ID_CLIENT';
+ if cnt = 0 then
+   execute immediate
+     'create index IDX_BALANCE_ID_CLIENT on SYSTEM.BALANCE (ID_CLIENT) tablespace SYSTEM';
+ end if;
+end;
+/
+prompt Добавление индексов на таблицы SYSTEM.BALANCE... ok
+
+prompt Добавление индексов на таблицы SYSTEM.BALANCE_LOG...
+declare
+  cnt number;
+begin
+ select count(*) into cnt from all_indexes
+  where owner = 'SYSTEM'
+    and table_name = 'BALANCE_LOG'
+    and index_name = 'IDX_ID_BAL_ID_OP_TYPE_OP';
+ if cnt = 0 then
+   execute immediate
+     'create index IDX_ID_BAL_ID_OP_TYPE_OP on SYSTEM.BALANCE_LOG (ID_BALANCE, ID_OPER, TYPE_OPER) tablespace SYSTEM';
+ end if;
+end;
+/
+prompt Добавление индексов на таблицы SYSTEM.BALANCE_LOG... ok
+
+prompt ============================================================================================
+prompt   Модификация, создание пакетов
+prompt ============================================================================================
+
+prompt Создание, изменение пакета pkgClient...
+
+create or replace package system.pkgClient is
+
+  cursor pCurHistory is
+    select t.* from system.balance_log t;
+
+  pRowHistory pCurHistory%rowtype;
+  -- процедура, добавляющая нового клиента
+  procedure add_client(pClient system.client%rowtype);
+
+  -- процедура инициализации баланса
+  procedure init_balance(pBalance system.balance%rowtype);
+
+  -- функция, возвращающая баланс
+  function get_balance(pId_Client system.client.id%type) return number;
+
+  -- процедура добавления платежа
+  procedure add_payment (pPayment system.payment%rowtype, pBalanceId system.balance.id%type);
+
+  -- процедура добавления расхода
+  procedure add_expense (pExpense system.expense%rowtype, pBalanceId system.balance.id%type);
+
+  -- процедура добавления логов баланса
+  procedure add_balance_log (pBalanceLog system.balance_log%rowtype);
+
+  -- процедура обновления баланса
+  procedure upd_balance (pBalanceId system.balance.id%type);
+
+  -- функция, возвращающая курсор истории изменения баланса
+  function get_history_balance(vBalanceId system.balance.id%type) return sys_refcursor;
+
+end pkgClient;
+/
+
+create or replace package body system.pkgClient is
+  -- функция, добавляющая нового клиента
+  procedure add_client(pClient system.client%rowtype) is
+  begin
+    insert into system.client
+    values pClient;
+    commit;
+  end;
+
+  -- процедура инициализации баланса
+  procedure init_balance(pBalance system.balance%rowtype) is
+  begin
+    insert into system.balance
+    values pBalance;
+    commit;
+  end;
+
+  -- функция, возвращающая баланс
+  function get_balance (pId_Client system.client.id%type) return number is
+    result number;
+  begin
+    select t.balance_sum
+      into result
+      from system.balance t
+     where t.id_client = pId_Client;
+    return result;
+  end;
+
+  -- процедура добавления платежа
+  procedure add_payment (pPayment system.payment%rowtype, pBalanceId system.balance.id%type) is
+    vBalanceLog system.balance_log%rowtype;
+  begin
+    -- Добавим платеж
+    insert into system.payment
+    values pPayment;
+    -- Добавим лог баланса
+    vBalanceLog.id           := seq_id.nextval;
+    vBalanceLog.id_balance   := pBalanceId;
+    vBalanceLog.id_oper      := pPayment.id;
+    vBalanceLog.type_oper := '1';
+
+    add_balance_log(vBalanceLog);
+
+    commit;
+  end;
+
+  -- процедура добавления расхода
+  procedure add_expense (pExpense system.expense%rowtype, pBalanceId system.balance.id%type) is
+    vBalanceLog system.balance_log%rowtype;
+  begin
+    -- Добавим расход
+    insert into system.expense
+    values pExpense;
+    -- Добавим лог баланса
+    vBalanceLog.id           := seq_id.nextval;
+    vBalanceLog.id_balance   := pBalanceId;
+    vBalanceLog.id_oper      := pExpense.id;
+    vBalanceLog.type_oper := '2';
+
+    add_balance_log(vBalanceLog);
+    commit;
+  end;
+
+  -- процедура добавления логов баланса
+  procedure add_balance_log (pBalanceLog system.balance_log%rowtype) is
+  begin
+    insert into system.balance_log
+    values pBalanceLog;
+    commit;
+  end;
+
+  -- процедура обновления баланса
+  procedure upd_balance (pBalanceId system.balance.id%type) is
+    vBalance     system.balance%rowtype;
+    vSumPayment  number := 0;
+    vSumExpense  number := 0;
+  begin
+    -- получим данные о балансе
+    select t.*
+      into vBalance
+      from system.balance t
+     where t.id = pBalanceId;
+
+    begin
+     -- посмотрим, были ли какие-то платежи после последней даты обновления баланса
+      select sum(t.payment_sum)
+        into vSumPayment
+        from system.payment t
+       where t.id_client = vBalance.id_client
+         and t.payment_date > vBalance.update_date;
+    exception
+      -- платежей не было, ну и ладно
+      when no_data_found then null;
+    end;
+
+    begin
+     -- посмотрим, были ли какие-то расходы после последней даты обновления баланса
+      select sum(t.expense_sum)
+        into vSumExpense
+        from system.expense t
+       where t.id_client = vBalance.id_client
+         and t.expense_date > vBalance.update_date;
+    exception
+      -- расходов не было, ну и ладно
+      when no_data_found then null;
+    end;
+    -- обновим дату обновления баланса
+    update system.balance t
+       set t.balance_sum = t.balance_sum + vSumPayment - vSumExpense,
+           t.update_date = sysdate
+     where t.id = vBalance.id;
+
+    commit;
+  end;
+
+
+  -- функция, возвращающая курсор истории изменения баланса
+  function get_history_balance(vBalanceId system.balance.id%type) return sys_refcursor is
+    pRef sys_refcursor;
+  begin
+    open pRef for
+    select case when b.type_oper = 1 and p.payment_type = 1 then 'Терминал'
+                when b.type_oper = 1 and p.payment_type = 2 then 'Карта'
+                when b.type_oper = 1 and p.payment_type = 3 then 'Оператор'
+                when b.type_oper = 2 and e.expense_type = 1 then 'Звонок'
+                when b.type_oper = 2 and e.expense_type = 2 then 'СМС'
+                when b.type_oper = 2 and e.expense_type = 3 then 'Интернет'
+                else 'Неизвестно'
+            end kind_oper,
+           decode(b.type_oper, 1, 'Платеж', 'Расход') type_oper,
+           decode(b.type_oper, 1, p.payment_sum, -e.expense_sum) sum_oper,
+           decode(b.type_oper, 1, p.payment_date, e.expense_date) date_oper
+      from system.balance_log b
+      left join system.payment p on p.id = b.id_oper and b.type_oper = 1
+      left join system.expense e on e.id = b.id_oper and b.type_oper = 2
+     where b.id_balance = vBalanceId
+     order by decode(b.type_oper, 1, p.payment_date, e.expense_date);
+
+    return pRef;
+  end;
+end pkgClient;
+/
+
+prompt Перекомпилируем пакет...
+alter package pkgClient compile;
+
+prompt Создание, изменение пакета pkgClient...ok
+
+prompt ============================================================================================
+prompt   Миграция завершена
+prompt ============================================================================================
